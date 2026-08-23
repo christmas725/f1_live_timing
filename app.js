@@ -72,20 +72,39 @@
 
   function clamp(n, min, max) { return Math.min(max, Math.max(min, n)); }
 
+  async function apiError(response, label) {
+    const text = await response.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch { body = null; }
+    const detail = String(body?.detail || body?.error || text || `${label} ${response.status}`);
+    const error = new Error(`${label} ${response.status}: ${detail}`);
+    error.status = response.status;
+    error.detail = detail;
+    if (/live f1 session in progress|restricted to authenticated users|live session/i.test(detail)) {
+      error.code = 'OPENF1_LIVE_LOCK';
+    }
+    return error;
+  }
+
   async function apiFetch(endpoint, params = {}) {
-    const qs = new URLSearchParams({ endpoint, ...Object.fromEntries(Object.entries(params).filter(([,v]) => v !== undefined && v !== null)) });
+    const cleanParams = Object.fromEntries(Object.entries(params).filter(([,v]) => v !== undefined && v !== null));
+    const qs = new URLSearchParams({ endpoint, ...cleanParams });
     const proxyUrl = `/api/openf1?${qs.toString()}`;
+
     try {
       const response = await fetch(proxyUrl, { headers: { Accept: 'application/json' } });
       if (response.ok) return await response.json();
-      if (![404, 405].includes(response.status)) throw new Error(`Proxy ${response.status}`);
+      const error = await apiError(response, 'Proxy');
+      if (error.code === 'OPENF1_LIVE_LOCK') throw error;
+      if (![404, 405].includes(response.status)) throw error;
     } catch (error) {
+      if (error?.code === 'OPENF1_LIVE_LOCK') throw error;
       console.warn('Proxy unavailable; trying OpenF1 directly.', error);
     }
 
-    const directQs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([,v]) => v !== undefined && v !== null)));
+    const directQs = new URLSearchParams(cleanParams);
     const response = await fetch(`${API_BASE}/${endpoint}?${directQs.toString()}`, { headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error(`OpenF1 ${endpoint}: ${response.status}`);
+    if (!response.ok) throw await apiError(response, `OpenF1 ${endpoint}`);
     return response.json();
   }
 
@@ -109,6 +128,22 @@
     }
   }
 
+  function renderSessionOptions(sessions) {
+    el.sessionSelect.innerHTML = '';
+    for (const s of sessions) {
+      const opt = document.createElement('option');
+      opt.value = String(s.session_key);
+      if (s.source_type === 'LOCAL_CACHE') {
+        opt.textContent = '2025 Abu Dhabi GP · Local Cache (Laps 1–7)';
+      } else if (s.source_type === 'DEMO') {
+        opt.textContent = '2025 Demo Grand Prix · Offline Replay';
+      } else {
+        opt.textContent = `${formatDateLabel(s.date_start)} · ${s.country_name || s.location} · ${s.circuit_short_name || s.location}`;
+      }
+      el.sessionSelect.appendChild(opt);
+    }
+  }
+
   async function loadSessions(year = Number(el.yearSelect.value)) {
     stopPlayback();
     el.sessionSelect.disabled = true;
@@ -119,38 +154,55 @@
     try {
       const sessions = await apiFetch('sessions', { year, session_name: 'Race' });
       const now = Date.now();
-      app.sessions = sessions
+      const historical = sessions
         .filter(s => !s.is_cancelled && new Date(s.date_end || s.date_start).getTime() < now)
         .sort((a, b) => new Date(b.date_start) - new Date(a.date_start));
 
-      if (!app.sessions.length) throw new Error('완료된 Race 세션이 없습니다.');
+      if (!historical.length) throw new Error('완료된 Race 세션이 없습니다.');
 
-      el.sessionSelect.innerHTML = '';
-      for (const s of app.sessions) {
-        const opt = document.createElement('option');
-        opt.value = String(s.session_key);
-        opt.textContent = `${formatDateLabel(s.date_start)} · ${s.country_name || s.location} · ${s.circuit_short_name || s.location}`;
-        el.sessionSelect.appendChild(opt);
-      }
+      app.sessions = [...historical, makeLocalSession(), makeDemoSession()];
       app.selectedSession = app.sessions[0];
-      setNotice(`${year} 시즌 Race ${app.sessions.length}개를 찾았어요. 원하는 경기를 선택한 뒤 데이터를 불러오면 됩니다.`, 'ok');
+      renderSessionOptions(app.sessions);
+      setNotice(`${year} 시즌 Race ${historical.length}개를 찾았어요. 실제 OpenF1 기록 또는 오프라인 Local Cache를 선택할 수 있습니다.`, 'ok');
     } catch (error) {
       console.error(error);
-      app.sessions = [makeDemoSession()];
+      app.sessions = [makeLocalSession(), makeDemoSession()];
       app.selectedSession = app.sessions[0];
-      el.sessionSelect.innerHTML = '<option value="demo">2025 Demo Grand Prix · Offline Replay</option>';
-      setNotice('OpenF1 연결에 실패해 내장 Demo Replay로 전환했어요. /api/openf1 프록시 또는 OpenF1 연결 상태를 확인해 주세요.', 'info');
+      renderSessionOptions(app.sessions);
+      if (error?.code === 'OPENF1_LIVE_LOCK') {
+        setNotice('OpenF1 LIVE SESSION LOCK · 현재 F1 라이브 세션으로 비인증 API가 일시 제한되어 있어요. 2025 Abu Dhabi GP 실제 기록 Local Cache(1–7랩)를 우선 사용할 수 있습니다. 세션 종료 후 시즌을 다시 선택하면 Historical Replay가 복구됩니다.', 'locked');
+      } else {
+        setNotice('OpenF1을 사용할 수 없어 Local Cache로 전환했어요. Local Cache까지 불러오지 못할 경우 Demo Replay가 마지막 fallback으로 동작합니다.', 'info');
+      }
     } finally {
       el.sessionSelect.disabled = false;
       el.loadButton.disabled = false;
     }
   }
 
+  function makeLocalSession() {
+    return {
+      session_key: 'local-2025-abu-dhabi-l1-7', meeting_key: 'local-2025-abu-dhabi', year: 2025,
+      country_name: 'Abu Dhabi', location: 'Yas Marina', circuit_short_name: 'Yas Marina Circuit',
+      session_name: 'Race · Laps 1–7', session_type: 'Race', source_type: 'LOCAL_CACHE',
+      local_data_url: './data/local-2025-abu-dhabi-l1-7.json',
+      date_start: '2025-12-07T13:00:00Z', date_end: '2025-12-07T13:12:00Z'
+    };
+  }
+
+  async function localReplayData(session) {
+    const response = await fetch(session.local_data_url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`Local cache ${response.status}`);
+    const data = await response.json();
+    if (!data?.drivers?.length || !data?.laps?.length) throw new Error('Local cache is incomplete.');
+    return data;
+  }
+
   function makeDemoSession() {
     return {
       session_key: 'demo', meeting_key: 'demo', year: 2025,
       country_name: 'Demo', location: 'Timing Lab', circuit_short_name: 'Timing Lab',
-      session_name: 'Race', session_type: 'Race',
+      session_name: 'Race', session_type: 'Race', source_type: 'DEMO',
       date_start: '2025-01-01T12:00:00Z', date_end: '2025-01-01T13:25:00Z'
     };
   }
@@ -227,9 +279,12 @@
 
     try {
       let data;
-      if (String(app.selectedSession.session_key) === 'demo') {
+      if (app.selectedSession.source_type === 'DEMO' || String(app.selectedSession.session_key) === 'demo') {
         data = demoData();
         app.source = 'DEMO';
+      } else if (app.selectedSession.source_type === 'LOCAL_CACHE') {
+        data = await localReplayData(app.selectedSession);
+        app.source = 'LOCAL CACHE';
       } else {
         const sessionKey = app.selectedSession.session_key;
         const results = await Promise.all(ENDPOINTS.map(endpoint => safeFetch(endpoint, sessionKey)));
@@ -242,16 +297,34 @@
 
       prepareReplay(data);
       renderAll(true);
-      setNotice(app.source === 'OPENF1'
-        ? '실제 OpenF1 기록을 불러왔어요. ▶ 버튼으로 Replay를 시작하면 됩니다.'
-        : '내장 Demo Replay가 준비됐어요. ▶ 버튼으로 UI 동작을 확인할 수 있습니다.', 'ok');
+      if (app.source === 'OPENF1') {
+        setNotice('실제 OpenF1 기록을 불러왔어요. ▶ 버튼으로 Replay를 시작하면 됩니다.', 'ok');
+      } else if (app.source === 'LOCAL CACHE') {
+        setNotice('실제 2025 Abu Dhabi GP의 1–7랩 기록을 담은 Local Cache가 준비됐어요. Lap time · Position · Gap은 실제 기록이며, Interval은 인접 Gap으로 계산합니다. 이 소형 캐시에는 타이어 컴파운드·날씨·피트 데이터는 포함하지 않았어요.', 'ok');
+      } else {
+        setNotice('내장 Demo Replay가 준비됐어요. ▶ 버튼으로 UI 동작을 확인할 수 있습니다.', 'ok');
+      }
     } catch (error) {
       console.error(error);
+      if (app.selectedSession?.source_type !== 'LOCAL_CACHE' && app.selectedSession?.source_type !== 'DEMO') {
+        try {
+          const localSession = makeLocalSession();
+          const localData = await localReplayData(localSession);
+          app.selectedSession = localSession;
+          app.source = 'LOCAL CACHE';
+          prepareReplay(localData);
+          renderAll(true);
+          setNotice('선택한 OpenF1 기록을 불러오지 못해 실제 2025 Abu Dhabi GP 1–7랩 Local Cache로 전환했어요.', 'info');
+          return;
+        } catch (localError) {
+          console.error('Local cache fallback failed', localError);
+        }
+      }
       app.selectedSession = makeDemoSession();
       app.source = 'DEMO';
       prepareReplay(demoData());
       renderAll(true);
-      setNotice('선택한 OpenF1 기록을 완전히 불러오지 못해 Demo Replay로 전환했어요.', 'info');
+      setNotice('Local Cache까지 불러오지 못해 마지막 fallback인 Demo Replay로 전환했어요.', 'info');
     } finally {
       el.loadButton.disabled = false;
     }

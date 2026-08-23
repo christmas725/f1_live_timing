@@ -34,7 +34,7 @@ export async function GET(request) {
     const upstream = await fetch(upstreamUrl, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'F1-Live-Timing-v0.1.1'
+        'User-Agent': 'F1-Live-Timing-v0.1.2'
       }
     });
 

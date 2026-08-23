@@ -127,6 +127,7 @@ select:focus, button:focus-visible, input:focus-visible { outline: 2px solid rgb
 .notice.visible { display: block; }
 .notice.info { border-color: #293548; background: #101720; color: #bcd4f5; }
 .notice.ok { border-color: #244536; background: #101b16; color: #b7e7cd; }
+.notice.locked { border-color: #66551a; background: #1d190d; color: #ffe28a; }
 
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; margin-top: 12px; align-items: start; }
 .timing-card, .panel-card {
