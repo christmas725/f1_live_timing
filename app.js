@@ -139,7 +139,7 @@
       app.sessions = [makeDemoSession()];
       app.selectedSession = app.sessions[0];
       el.sessionSelect.innerHTML = '<option value="demo">2025 Demo Grand Prix · Offline Replay</option>';
-      setNotice('OpenF1 세션 목록을 불러오지 못해 내장 Demo Replay로 전환했어요. Vercel 배포 후에는 /api/openf1 프록시를 사용합니다.', 'info');
+      setNotice('OpenF1 연결에 실패해 내장 Demo Replay로 전환했어요. /api/openf1 프록시 또는 OpenF1 연결 상태를 확인해 주세요.', 'info');
     } finally {
       el.sessionSelect.disabled = false;
       el.loadButton.disabled = false;

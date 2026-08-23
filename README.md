@@ -1,4 +1,4 @@
-# F1 Live Timing v0.1
+# F1 Live Timing v0.1.1
 
 완료된 Formula 1 Race 세션을 OpenF1 데이터로 불러와 시간순으로 재생하는 웹 기반 라이브 타이밍 프로토타입입니다.
 
@@ -20,7 +20,7 @@
 ## 파일 구조
 
 ```text
-f1-live-timing-v0.1/
+f1-live-timing-v0.1.1/
 ├─ index.html
 ├─ styles.css
 ├─ app.js
@@ -46,6 +46,20 @@ python -m http.server 8080
 그 후 `http://localhost:8080`으로 접속합니다. 단, 일반 Python HTTP 서버에서는 `/api/openf1` 서버리스 함수가 실행되지 않으므로 앱이 OpenF1 직접 호출을 시도하고, 그것도 실패하면 Demo Replay로 전환합니다.
 
 Vercel CLI가 있다면 프로젝트 루트에서 `vercel dev`를 사용하는 편이 실제 배포 환경과 가장 가깝습니다.
+
+
+## v0.1.1 Hotfix
+
+- Vercel 비프레임워크 JavaScript Function을 ESM/Web Handler 형식으로 변경
+- `package.json`에 `"type": "module"` 추가
+- `/api/openf1`이 `Request` / `Response` Web API를 사용하도록 수정
+- API 연결 실패 안내 문구 개선
+
+배포 후 아래 주소가 JSON 배열을 반환하면 프록시가 정상입니다.
+
+```text
+/api/openf1?endpoint=sessions&year=2026&session_name=Race
+```
 
 ## 다음 버전 계획
 
