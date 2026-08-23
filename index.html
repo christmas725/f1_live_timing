@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090a0d" />
+  <title>F1 Live Timing v0.1</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-group">
+        <div class="brand-mark">LT</div>
+        <div>
+          <div class="eyebrow">F1 LIVE TIMING</div>
+          <h1 id="eventTitle">Historical Replay</h1>
+        </div>
+      </div>
+      <div class="session-status">
+        <span id="trackStatusDot" class="status-dot green"></span>
+        <div>
+          <span id="trackStatus" class="track-status">TRACK CLEAR</span>
+          <span id="sessionClock" class="session-clock">--:--:--</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="control-panel" aria-label="Replay controls">
+      <label>
+        <span>시즌</span>
+        <select id="yearSelect"></select>
+      </label>
+      <label class="session-picker">
+        <span>Race</span>
+        <select id="sessionSelect">
+          <option>세션 목록 불러오는 중…</option>
+        </select>
+      </label>
+      <label>
+        <span>재생 속도</span>
+        <select id="speedSelect">
+          <option value="1">1×</option>
+          <option value="4">4×</option>
+          <option value="10">10×</option>
+          <option value="30" selected>30×</option>
+          <option value="60">60×</option>
+        </select>
+      </label>
+      <button id="loadButton" class="primary-button" type="button">데이터 불러오기</button>
+    </section>
+
+    <section class="race-strip">
+      <div class="race-summary">
+        <div>
+          <span class="summary-label">SESSION</span>
+          <strong id="sessionName">RACE</strong>
+        </div>
+        <div>
+          <span class="summary-label">LAP</span>
+          <strong><span id="currentLap">0</span> / <span id="totalLaps">--</span></strong>
+        </div>
+        <div>
+          <span class="summary-label">REPLAY</span>
+          <strong id="replayTime">00:00:00</strong>
+        </div>
+        <div class="data-source-wrap">
+          <span class="summary-label">SOURCE</span>
+          <strong id="dataSource">OPENF1</strong>
+        </div>
+      </div>
+      <div class="playback-row">
+        <button id="playButton" class="play-button" type="button" aria-label="재생">▶</button>
+        <input id="timeline" type="range" min="0" max="1000" value="0" aria-label="Replay timeline" />
+        <button id="restartButton" class="icon-button" type="button" aria-label="처음부터">↺</button>
+      </div>
+    </section>
+
+    <div id="notice" class="notice" aria-live="polite">OpenF1에서 완료된 Race 세션을 찾고 있어요.</div>
+
+    <main class="dashboard-grid">
+      <section class="timing-card">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">TIMING TOWER</span>
+            <h2 id="circuitName">Circuit</h2>
+          </div>
+          <div class="legend">
+            <span><i class="legend-dot purple"></i>Session Best</span>
+            <span><i class="legend-dot green"></i>Personal Best</span>
+          </div>
+        </div>
+
+        <div class="timing-scroll">
+          <table class="timing-table">
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>DRIVER</th>
+                <th>GAP</th>
+                <th>INT</th>
+                <th>TYRE</th>
+                <th>AGE</th>
+                <th>LAP</th>
+                <th>LAST</th>
+                <th>BEST</th>
+                <th>PIT</th>
+              </tr>
+            </thead>
+            <tbody id="timingBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="side-column">
+        <section class="panel-card race-control-card">
+          <div class="section-heading compact">
+            <div>
+              <span class="eyebrow">RACE CONTROL</span>
+              <h2>Messages</h2>
+            </div>
+            <span id="messageCount" class="counter">0</span>
+          </div>
+          <div id="raceControl" class="race-control-list">
+            <div class="empty-state">아직 표시할 메시지가 없습니다.</div>
+          </div>
+        </section>
+
+        <section class="panel-card weather-card">
+          <div class="section-heading compact">
+            <div>
+              <span class="eyebrow">TRACK</span>
+              <h2>Weather</h2>
+            </div>
+          </div>
+          <div class="weather-grid">
+            <div><span>AIR</span><strong id="airTemp">--°C</strong></div>
+            <div><span>TRACK</span><strong id="trackTemp">--°C</strong></div>
+            <div><span>WIND</span><strong id="windSpeed">-- m/s</strong></div>
+            <div><span>RAIN</span><strong id="rainfall">--</strong></div>
+            <div><span>HUMIDITY</span><strong id="humidity">--%</strong></div>
+            <div><span>PRESSURE</span><strong id="pressure">-- hPa</strong></div>
+          </div>
+        </section>
+
+        <section class="panel-card info-card">
+          <span class="eyebrow">v0.1</span>
+          <p>완료된 Race의 Position, Interval, Lap, Stint, Pit, Race Control, Weather 데이터를 시간순으로 재구성합니다.</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
