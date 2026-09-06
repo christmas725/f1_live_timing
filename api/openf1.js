@@ -1,6 +1,9 @@
 const ALLOWED_ENDPOINTS = new Set([
   'sessions',
+  'meetings',
   'drivers',
+  'championship_drivers',
+  'championship_teams',
   'position',
   'intervals',
   'laps',
@@ -34,7 +37,7 @@ export async function GET(request) {
     const upstream = await fetch(upstreamUrl, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'F1-Live-Timing-v0.1.2'
+        'User-Agent': 'F1-Live-Timing-v0.2-Magic-Number'
       }
     });
 
