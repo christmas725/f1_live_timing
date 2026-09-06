@@ -1,6 +1,23 @@
 const GP_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 const SPRINT_POINTS = [8, 7, 6, 5, 4, 3, 2, 1];
 const KNOWN_2026_SPRINT_LOCATIONS = ['shanghai', 'miami', 'montreal', 'montréal', 'silverstone', 'zandvoort', 'singapore'];
+const TEAM_COLOURS = {
+  'Mercedes': '00a19c',
+  'Ferrari': 'e8002d',
+  'McLaren': 'ff8000',
+  'Red Bull': '3671c6',
+  'Red Bull Racing': '3671c6',
+  'Alpine F1 Team': 'ff87bc',
+  'Alpine': 'ff87bc',
+  'Aston Martin': '229971',
+  'Williams': '64c4ff',
+  'Racing Bulls': '6692ff',
+  'RB F1 Team': '6692ff',
+  'Haas F1 Team': 'b6babd',
+  'Haas': 'b6babd',
+  'Audi': 'f50537',
+  'Cadillac': 'd4af37'
+};
 
 const els = {
   seasonSelect: document.querySelector('#seasonSelect'),
@@ -29,6 +46,7 @@ const els = {
 
 let state = {
   year: 2026,
+  source: '',
   standings: [],
   driverMeta: new Map(),
   latestRace: null,
@@ -39,21 +57,41 @@ let state = {
   selectedNumber: null
 };
 
-async function api(endpoint, params = {}) {
+async function openF1(endpoint, params = {}) {
   const url = new URL('/api/openf1', window.location.origin);
   url.searchParams.set('endpoint', endpoint);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
   });
+  return fetchJsonArray(url, `OpenF1 ${endpoint}`);
+}
+
+async function jolpica(type, season) {
+  const url = new URL('/api/jolpica', window.location.origin);
+  url.searchParams.set('type', type);
+  url.searchParams.set('season', season);
   const response = await fetch(url, { cache: 'no-store' });
   const text = await response.text();
   let data;
   try { data = JSON.parse(text); } catch { data = null; }
   if (!response.ok) {
     const message = data?.detail || data?.error || `HTTP ${response.status}`;
-    throw new Error(message);
+    throw new Error(`Jolpica ${type}: ${message}`);
   }
-  if (!Array.isArray(data)) throw new Error(`Unexpected ${endpoint} response`);
+  if (!data || typeof data !== 'object') throw new Error(`Unexpected Jolpica ${type} response`);
+  return data;
+}
+
+async function fetchJsonArray(url, label) {
+  const response = await fetch(url, { cache: 'no-store' });
+  const text = await response.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = null; }
+  if (!response.ok) {
+    const message = data?.detail || data?.error || `HTTP ${response.status}`;
+    throw new Error(`${label}: ${message}`);
+  }
+  if (!Array.isArray(data)) throw new Error(`Unexpected ${label} response`);
   return data;
 }
 
@@ -67,7 +105,8 @@ function setStatus(message, kind = '') {
   els.dataStatus.className = `status ${kind}`.trim();
 }
 
-function isSprintMeeting(meeting, sessions) {
+function isSprintMeeting(meeting, sessions = []) {
+  if (typeof meeting?.is_sprint === 'boolean') return meeting.is_sprint;
   const fromApi = sessions.some((session) => session.meeting_key === meeting.meeting_key && String(session.session_name).toLowerCase() === 'sprint');
   if (fromApi) return true;
   if (state.year !== 2026) return false;
@@ -81,20 +120,20 @@ function formatGap(value) {
 }
 
 function driverLabel(driver) {
-  const meta = state.driverMeta.get(driver.driver_number);
-  return meta?.full_name || meta?.broadcast_name || `Driver #${driver.driver_number}`;
+  const meta = state.driverMeta.get(String(driver.driver_number));
+  return meta?.full_name || meta?.broadcast_name || `Driver ${driver.driver_number}`;
 }
 
 function acronym(driver) {
-  return state.driverMeta.get(driver.driver_number)?.name_acronym || String(driver.driver_number);
+  return state.driverMeta.get(String(driver.driver_number))?.name_acronym || String(driver.driver_number).slice(0, 3).toUpperCase();
 }
 
 function teamName(driver) {
-  return state.driverMeta.get(driver.driver_number)?.team_name || '—';
+  return state.driverMeta.get(String(driver.driver_number))?.team_name || '—';
 }
 
 function teamColor(driver) {
-  const raw = state.driverMeta.get(driver.driver_number)?.team_colour;
+  const raw = state.driverMeta.get(String(driver.driver_number))?.team_colour;
   return raw && /^[0-9a-f]{6}$/i.test(raw) ? `#${raw}` : '#ff365e';
 }
 
@@ -113,7 +152,7 @@ function magicAgainst(candidate, rival, remainingMax) {
 
 function strongestRival(candidate, remainingMax) {
   return state.standings
-    .filter((r) => r.driver_number !== candidate.driver_number)
+    .filter((r) => String(r.driver_number) !== String(candidate.driver_number))
     .map((r) => ({ rival: r, magic: magicAgainst(candidate, r, remainingMax) }))
     .sort((a, b) => b.magic - a.magic || Number(b.rival.points_current) - Number(a.rival.points_current))[0];
 }
@@ -136,7 +175,7 @@ function renderRivals(candidate, remainingMax) {
   els.rivalsBody.replaceChildren();
   for (const rival of state.standings) {
     const tr = document.createElement('tr');
-    const isSelected = rival.driver_number === candidate.driver_number;
+    const isSelected = String(rival.driver_number) === String(candidate.driver_number);
     const magic = isSelected ? null : magicAgainst(candidate, rival, remainingMax);
     if (!isSelected && magic === 0) tr.classList.add('eliminated');
     const gap = Number(candidate.points_current) - Number(rival.points_current);
@@ -155,7 +194,7 @@ function renderRivals(candidate, remainingMax) {
   }
 }
 
-function renderScenarios(candidate, overallMagic, rival, remainingMax) {
+function renderScenarios(candidate, overallMagic, rival) {
   els.scenarioList.replaceChildren();
   const next = state.remainingMeetings[0];
   if (!next) {
@@ -247,62 +286,156 @@ function render() {
   els.latestRound.textContent = `최신 완료 기준: ${latestName} · GP 25점 / Sprint 8점 최대`;
 
   renderRivals(candidate, remainingMax);
-  if (strongest) renderScenarios(candidate, overallMagic, strongest.rival, remainingMax);
+  if (strongest) renderScenarios(candidate, overallMagic, strongest.rival);
+}
+
+function normalizeJolpicaStandings(data) {
+  const table = data?.MRData?.StandingsTable;
+  const list = table?.StandingsLists?.[0];
+  const rows = list?.DriverStandings;
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Jolpica 드라이버 순위 데이터가 비어 있습니다.');
+
+  const standings = [];
+  const meta = new Map();
+
+  rows.forEach((entry) => {
+    const driver = entry.Driver || {};
+    const constructor = entry.Constructors?.[0] || {};
+    const id = String(driver.permanentNumber || driver.driverId || entry.position);
+    const fullName = [driver.givenName, driver.familyName].filter(Boolean).join(' ') || driver.driverId || `Driver ${id}`;
+    const code = driver.code || driver.familyName?.slice(0, 3)?.toUpperCase() || id.slice(0, 3).toUpperCase();
+    const team = constructor.name || '—';
+
+    standings.push({
+      driver_number: id,
+      points_current: Number(entry.points),
+      position_current: Number(entry.position),
+      wins: Number(entry.wins || 0)
+    });
+
+    meta.set(id, {
+      full_name: fullName,
+      broadcast_name: fullName,
+      name_acronym: code,
+      team_name: team,
+      team_colour: TEAM_COLOURS[team] || 'ff365e'
+    });
+  });
+
+  return {
+    round: Number(list.round || table.round || 0),
+    standings: standings.sort((a, b) => a.position_current - b.position_current),
+    meta
+  };
+}
+
+function normalizeJolpicaSchedule(data, latestRound) {
+  const races = data?.MRData?.RaceTable?.Races;
+  if (!Array.isArray(races) || !races.length) throw new Error('Jolpica 시즌 일정 데이터가 비어 있습니다.');
+
+  const normalized = races.map((race) => ({
+    round: Number(race.round),
+    meeting_name: race.raceName || `Round ${race.round}`,
+    country_name: race.Circuit?.Location?.country || '',
+    location: race.Circuit?.Location?.locality || '',
+    date_start: `${race.date || ''}${race.time ? `T${race.time}` : 'T00:00:00Z'}`,
+    is_sprint: Boolean(race.Sprint)
+  }));
+
+  const latestMeeting = normalized.find((race) => race.round === latestRound)
+    || normalized.filter((race) => race.round <= latestRound).at(-1)
+    || null;
+  const remaining = normalized.filter((race) => race.round > latestRound);
+
+  return { latestMeeting, remaining };
+}
+
+async function loadFromJolpica(year) {
+  const [standingsData, scheduleData] = await Promise.all([
+    jolpica('standings', year),
+    jolpica('schedule', year)
+  ]);
+
+  const normalizedStandings = normalizeJolpicaStandings(standingsData);
+  const normalizedSchedule = normalizeJolpicaSchedule(scheduleData, normalizedStandings.round);
+
+  state.source = 'Jolpica';
+  state.latestRace = null;
+  state.latestMeeting = normalizedSchedule.latestMeeting;
+  state.standings = normalizedStandings.standings;
+  state.driverMeta = normalizedStandings.meta;
+  state.remainingMeetings = normalizedSchedule.remaining;
+  state.remainingSprints = state.remainingMeetings.filter((meeting) => meeting.is_sprint).length;
+  state.nextRoundSprint = Boolean(state.remainingMeetings[0]?.is_sprint);
+}
+
+async function loadFromOpenF1(year) {
+  const [sessions, meetings] = await Promise.all([
+    openF1('sessions', { year }),
+    openF1('meetings', { year })
+  ]);
+
+  const now = Date.now();
+  const races = sessions
+    .filter((s) => String(s.session_name).toLowerCase() === 'race')
+    .sort((a, b) => dateValue(a.date_start) - dateValue(b.date_start));
+
+  let latestRace = [...races].reverse().find((race) => dateValue(race.date_end || race.date_start) <= now);
+  if (!latestRace) latestRace = [...races].reverse().find((race) => dateValue(race.date_start) <= now) || races.at(-1);
+  if (!latestRace) throw new Error(`${year} Race session을 찾지 못했습니다.`);
+
+  const [championship, drivers] = await Promise.all([
+    openF1('championship_drivers', { session_key: latestRace.session_key }),
+    openF1('drivers', { session_key: latestRace.session_key })
+  ]);
+  if (!championship.length) throw new Error('드라이버 챔피언십 데이터가 아직 공개되지 않았습니다.');
+
+  state.source = 'OpenF1 fallback';
+  state.latestRace = latestRace;
+  state.standings = championship
+    .filter((d) => Number.isFinite(Number(d.points_current)) && Number.isFinite(Number(d.position_current)))
+    .map((d) => ({ ...d, driver_number: String(d.driver_number) }))
+    .sort((a, b) => Number(a.position_current) - Number(b.position_current));
+  state.driverMeta = new Map(drivers.map((d) => [String(d.driver_number), d]));
+
+  const orderedMeetings = meetings
+    .filter((m) => !/test/i.test(`${m.meeting_name || ''} ${m.meeting_official_name || ''}`))
+    .sort((a, b) => dateValue(a.date_start) - dateValue(b.date_start));
+  state.latestMeeting = orderedMeetings.find((m) => m.meeting_key === latestRace.meeting_key)
+    || [...orderedMeetings].reverse().find((m) => dateValue(m.date_start) <= dateValue(latestRace.date_start));
+
+  const latestMeetingDate = dateValue(state.latestMeeting?.date_start || latestRace.date_start);
+  state.remainingMeetings = orderedMeetings.filter((m) => dateValue(m.date_start) > latestMeetingDate);
+  state.remainingSprints = state.remainingMeetings.filter((meeting) => isSprintMeeting(meeting, sessions)).length;
+  state.nextRoundSprint = Boolean(state.remainingMeetings[0] && isSprintMeeting(state.remainingMeetings[0], sessions));
 }
 
 async function loadData() {
   const year = Number(els.seasonSelect.value || 2026);
   state.year = year;
   els.refreshBtn.disabled = true;
-  setStatus('OpenF1 최신 챔피언십 확인 중…');
+  setStatus('Jolpica 최신 챔피언십 확인 중…');
 
   try {
-    const [sessions, meetings] = await Promise.all([
-      api('sessions', { year }),
-      api('meetings', { year })
-    ]);
-
-    const now = Date.now();
-    const races = sessions
-      .filter((s) => String(s.session_name).toLowerCase() === 'race')
-      .sort((a, b) => dateValue(a.date_start) - dateValue(b.date_start));
-
-    let latestRace = [...races].reverse().find((race) => dateValue(race.date_end || race.date_start) <= now);
-    if (!latestRace) latestRace = [...races].reverse().find((race) => dateValue(race.date_start) <= now) || races.at(-1);
-    if (!latestRace) throw new Error(`${year} Race session을 찾지 못했습니다.`);
-
-    const [championship, drivers] = await Promise.all([
-      api('championship_drivers', { session_key: latestRace.session_key }),
-      api('drivers', { session_key: latestRace.session_key })
-    ]);
-    if (!championship.length) throw new Error('드라이버 챔피언십 데이터가 아직 공개되지 않았습니다.');
-
-    state.latestRace = latestRace;
-    state.standings = championship
-      .filter((d) => Number.isFinite(Number(d.points_current)) && Number.isFinite(Number(d.position_current)))
-      .sort((a, b) => Number(a.position_current) - Number(b.position_current));
-    state.driverMeta = new Map(drivers.map((d) => [d.driver_number, d]));
-
-    const orderedMeetings = meetings
-      .filter((m) => !/test/i.test(`${m.meeting_name || ''} ${m.meeting_official_name || ''}`))
-      .sort((a, b) => dateValue(a.date_start) - dateValue(b.date_start));
-    state.latestMeeting = orderedMeetings.find((m) => m.meeting_key === latestRace.meeting_key)
-      || [...orderedMeetings].reverse().find((m) => dateValue(m.date_start) <= dateValue(latestRace.date_start));
-
-    const latestMeetingDate = dateValue(state.latestMeeting?.date_start || latestRace.date_start);
-    state.remainingMeetings = orderedMeetings.filter((m) => dateValue(m.date_start) > latestMeetingDate);
-    state.remainingSprints = state.remainingMeetings.filter((meeting) => isSprintMeeting(meeting, sessions)).length;
-    state.nextRoundSprint = Boolean(state.remainingMeetings[0] && isSprintMeeting(state.remainingMeetings[0], sessions));
+    let fallbackUsed = false;
+    try {
+      await loadFromJolpica(year);
+    } catch (primaryError) {
+      console.warn('Jolpica primary source failed:', primaryError);
+      fallbackUsed = true;
+      setStatus('Jolpica 응답 실패 · OpenF1 보조 데이터 확인 중…', 'warn');
+      await loadFromOpenF1(year);
+    }
 
     populateDriverSelect();
     render();
     const stamp = new Date();
     els.updatedAt.textContent = `Last updated ${stamp.toLocaleString('ko-KR')}`;
-    setStatus(`OpenF1 동기화 완료 · ${state.standings.length} drivers`, 'ok');
+    setStatus(`${state.source} 동기화 완료 · ${state.standings.length} drivers${fallbackUsed ? ' · fallback' : ''}`, fallbackUsed ? 'warn' : 'ok');
   } catch (error) {
     console.error(error);
     setStatus(`데이터 오류: ${error.message}`, 'error');
-    els.magicText.textContent = 'OpenF1 데이터가 갱신되는 동안 잠시 최신 계산이 불가능할 수 있습니다.';
+    els.magicText.textContent = '공개 데이터 소스가 갱신되는 동안 최신 계산이 일시적으로 불가능할 수 있습니다.';
   } finally {
     els.refreshBtn.disabled = false;
   }
@@ -318,7 +451,7 @@ function escapeHtml(value) {
 }
 
 els.driverSelect.addEventListener('change', () => {
-  state.selectedNumber = Number(els.driverSelect.value);
+  state.selectedNumber = els.driverSelect.value;
   render();
 });
 els.refreshBtn.addEventListener('click', loadData);
