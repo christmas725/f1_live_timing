@@ -7,6 +7,9 @@ const ALLOWED_TYPES = new Set([
   'qualifying_all'
 ]);
 
+const PAGE_SIZE = 100;
+const MAX_PAGES = 20;
+
 const ITALY_2026_RESULTS = [
   { driverId: 'antonelli', number: '12', code: 'ANT', constructorId: 'mercedes', constructorName: 'Mercedes', position: 1, points: 25 },
   { driverId: 'russell', number: '63', code: 'RUS', constructorId: 'mercedes', constructorName: 'Mercedes', position: 2, points: 18 },
@@ -112,6 +115,80 @@ function applyItaly2026ResultsOverlay(payload) {
   return true;
 }
 
+async function fetchUpstream(path) {
+  const response = await fetch(`https://api.jolpi.ca${path}`, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': 'F1-Championship-Magic-Number-v0.2.1'
+    }
+  });
+  const body = await response.text();
+  return { response, body };
+}
+
+function raceKey(race) {
+  return `${race?.season || ''}:${race?.round || ''}`;
+}
+
+function mergeRacePages(pages, resultKey) {
+  const first = structuredClone(pages[0]);
+  const outputTable = first?.MRData?.RaceTable;
+  if (!outputTable) throw new Error('Unexpected Jolpica paged response');
+
+  const raceMap = new Map();
+  for (const page of pages) {
+    const races = page?.MRData?.RaceTable?.Races || [];
+    for (const race of races) {
+      const key = raceKey(race);
+      if (!raceMap.has(key)) {
+        raceMap.set(key, structuredClone(race));
+        continue;
+      }
+      const target = raceMap.get(key);
+      const incoming = race?.[resultKey] || [];
+      const existing = target?.[resultKey] || [];
+      const seen = new Set(existing.map((entry) => entry?.Driver?.driverId || `${entry?.number || ''}:${entry?.position || ''}`));
+      for (const entry of incoming) {
+        const entryKey = entry?.Driver?.driverId || `${entry?.number || ''}:${entry?.position || ''}`;
+        if (!seen.has(entryKey)) {
+          existing.push(entry);
+          seen.add(entryKey);
+        }
+      }
+      existing.sort((a, b) => Number(a?.position || 999) - Number(b?.position || 999));
+      target[resultKey] = existing;
+    }
+  }
+
+  outputTable.Races = [...raceMap.values()].sort((a, b) => Number(a?.round || 999) - Number(b?.round || 999));
+  outputTable.round = outputTable.Races.at(-1)?.round || outputTable.round;
+  first.MRData.limit = String(pages.reduce((sum, page) => sum + Number(page?.MRData?.limit || 0), 0));
+  first.MRData.offset = '0';
+  first.MRData.total = String(pages[0]?.MRData?.total || outputTable.Races.reduce((sum, race) => sum + (race?.[resultKey]?.length || 0), 0));
+  first.MRData.pagination = { merged: true, pages: pages.length, pageSize: PAGE_SIZE };
+  return first;
+}
+
+async function fetchPagedSeason(season, endpoint, resultKey) {
+  const firstCall = await fetchUpstream(`/ergast/f1/${season}/${endpoint}/?limit=${PAGE_SIZE}&offset=0`);
+  if (!firstCall.response.ok) return firstCall;
+
+  const firstPage = JSON.parse(firstCall.body);
+  const total = Number(firstPage?.MRData?.total || 0);
+  const pageCount = Math.max(1, Math.min(MAX_PAGES, Math.ceil(total / PAGE_SIZE)));
+  if (pageCount === 1) return { response: firstCall.response, body: JSON.stringify(firstPage) };
+
+  const offsets = Array.from({ length: pageCount - 1 }, (_, index) => (index + 1) * PAGE_SIZE);
+  const rest = await Promise.all(offsets.map(async (offset) => {
+    const call = await fetchUpstream(`/ergast/f1/${season}/${endpoint}/?limit=${PAGE_SIZE}&offset=${offset}`);
+    if (!call.response.ok) throw new Error(`Jolpica ${endpoint} page at offset ${offset} failed with ${call.response.status}`);
+    return JSON.parse(call.body);
+  }));
+
+  const merged = mergeRacePages([firstPage, ...rest], resultKey);
+  return { response: firstCall.response, body: JSON.stringify(merged) };
+}
+
 export async function GET(request) {
   try {
     const url = new URL(request.url);
@@ -126,22 +203,21 @@ export async function GET(request) {
       return Response.json({ error: 'Invalid round' }, { status: 400 });
     }
 
-    let path;
-    if (type === 'standings') path = `/ergast/f1/${season}/driverstandings/`;
-    else if (type === 'constructors') path = `/ergast/f1/${season}/constructorstandings/`;
-    else if (type === 'schedule') path = `/ergast/f1/${season}/races/`;
-    else if (type === 'results') path = `/ergast/f1/${season}/${round}/results/`;
-    else if (type === 'results_all') path = `/ergast/f1/${season}/results/?limit=2000`;
-    else path = `/ergast/f1/${season}/qualifying/?limit=2000`;
+    let upstreamCall;
+    if (type === 'results_all') {
+      upstreamCall = await fetchPagedSeason(season, 'results', 'Results');
+    } else if (type === 'qualifying_all') {
+      upstreamCall = await fetchPagedSeason(season, 'qualifying', 'QualifyingResults');
+    } else {
+      let path;
+      if (type === 'standings') path = `/ergast/f1/${season}/driverstandings/`;
+      else if (type === 'constructors') path = `/ergast/f1/${season}/constructorstandings/`;
+      else if (type === 'schedule') path = `/ergast/f1/${season}/races/`;
+      else path = `/ergast/f1/${season}/${round}/results/`;
+      upstreamCall = await fetchUpstream(path);
+    }
 
-    const upstream = await fetch(`https://api.jolpi.ca${path}`, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'F1-Championship-Magic-Number-v0.2'
-      }
-    });
-
-    const body = await upstream.text();
+    const { response: upstream, body } = upstreamCall;
     let responseBody = body;
     let provisionalId = 'none';
 
@@ -162,7 +238,7 @@ export async function GET(request) {
     return new Response(responseBody, {
       status: upstream.status,
       headers: {
-        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+        'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
         'X-F1-Provisional-Overlay': provisionalId
       }
