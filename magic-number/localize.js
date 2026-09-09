@@ -1,9 +1,9 @@
 (() => {
   const replacements = [
     // Drivers - longest/specific variants first.
+    ['Andrea Kimi Antonelli', '키미 안토넬리'],
     ['Gabriel Bortoleto', '가브리엘 보르톨레토'],
     ['Kimi Antonelli', '키미 안토넬리'],
-    ['Andrea Kimi Antonelli', '키미 안토넬리'],
     ['George Russell', '조지 러셀'],
     ['Charles Leclerc', '샤를 르클레르'],
     ['Lewis Hamilton', '루이스 해밀턴'],
@@ -47,6 +47,15 @@
     ['Audi', '아우디'],
     ['Cadillac', '캐딜락'],
     ['Haas', '하스'],
+
+    // Constructor nationalities returned by the standings API.
+    ['American', '미국'],
+    ['Austrian', '오스트리아'],
+    ['British', '영국'],
+    ['French', '프랑스'],
+    ['German', '독일'],
+    ['Italian', '이탈리아'],
+    ['Swiss', '스위스'],
 
     // Race names commonly returned by Jolpica.
     ['Saudi Arabian Grand Prix', '사우디아라비아 그랑프리'],
