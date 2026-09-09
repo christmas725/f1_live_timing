@@ -6,7 +6,7 @@
   "description": "Historical Formula 1 timing replay UI powered by OpenF1",
   "scripts": {
     "serve": "python -m http.server 8080",
-    "build:netlify": "rm -rf dist && mkdir -p dist && cp index.html app.js styles.css dist/ && cp -R magic-number data dist/"
+    "build:netlify": "rm -rf dist && mkdir -p dist && cp -R magic-number/. dist/"
   },
   "devDependencies": {
     "@netlify/functions": "6.0.0"
