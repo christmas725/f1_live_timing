@@ -6,7 +6,7 @@
   "description": "Historical Formula 1 timing replay UI powered by OpenF1",
   "scripts": {
     "serve": "python -m http.server 8080",
-    "build:netlify": "rm -rf dist && mkdir -p dist && cp -R magic-number/. dist/"
+    "build:netlify": "rm -rf dist && mkdir -p dist && cp -R magic-number/. dist/ && sed -i 's|href=\"/\"|href=\"https://f1-live-timing-seven.vercel.app/\"|' dist/index.html"
   },
   "devDependencies": {
     "@netlify/functions": "6.0.0"
