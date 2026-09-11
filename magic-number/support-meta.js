@@ -50,7 +50,12 @@ export const DRIVER_META = {
     'Y. David':['예반 데이비드','AIX Racing','DAV'], 'M. De Palo':['마테오 데 팔로','TRIDENT','DEP'],
     'N. Lacorte':['니콜라 라코르테','DAMS Lucas Oil','LAC'], 'B. Benavides':['브래드 베나비데스','AIX Racing','BEN'],
     'C. Ho':['크리스티안 호','Rodin Motorsport','HO'], 'F. Mclaughlin':['피온 맥러플린','Hitech','MCL'],
-    'F. Barrichello':['페르난도 바리첼로','AIX Racing','BAR']
+    'F. Barrichello':['페르난도 바리첼로','AIX Racing','BAR'],
+    'J. Garfias':['호세 가르피아스','PREMA Racing','GAR'], 'N. Bhirombhakdi':['난다부드 비롬박디','DAMS Lucas Oil','BHI'],
+    'P. Heuzenroeder':['패트릭 호이젠뢰더','Campos Racing','HEU'], 'W. Shin':['신우현','Hitech','SHI'],
+    'M. Shin':['신우현','Hitech','SHI'], 'S. Hanna':['살림 한나','AIX Racing','HAN'],
+    'R. Escotto':['리카르도 에스코토','AIX Racing','ESC'], 'N. Maccagnani':['니콜로 마카냐니','Rodin Motorsport','MAC'],
+    'A. Powell':['알렉스 파월','PREMA Racing','POW']
   },
   f1a: {
     'A. Palmowski':['알리샤 팔모프스키','Campos Racing','PAL'], 'E. Felbermayr':['엠마 펠버마이어','Rodin Motorsport','FEL'],
@@ -61,7 +66,14 @@ export const DRIVER_META = {
     'R. Robertson':['레이첼 로버트슨','Hitech','ROB'], 'L. Billard':['리사 빌라르','ART Grand Prix','BIL'],
     'K. Countryman':['케일리 컨트리맨','ART Grand Prix','COU'], 'A. Dobson':['에이바 돕슨','Hitech','DOB'],
     'E. Kosterman':['에스메 코스터만','MP Motorsport','KOS'], 'E. Stevens':['엘라 스티븐스','Rodin Motorsport','STE'],
-    'J. Jacquet':['제이드 자케','ART Grand Prix','JAC'], 'Z. Florescu':['조이 플로레스쿠','Hitech','FLO']
+    'J. Jacquet':['제이드 자케','ART Grand Prix','JAC'], 'Z. Florescu':['조이 플로레스쿠','Hitech','FLO'],
+    'C. Bättig':['키아라 베티그','Hitech','BAE'], 'A. Fisher':['오텀 피셔','Hitech','FIS'], 'W. Shi':['시 웨이','Hitech','SHI'],
+    'C. Bättig (WCD)BAE':['키아라 베티그','Hitech','BAE'], 'C. Bättig (WCD)':['키아라 베티그','Hitech','BAE'],
+    'A. Fisher (WCD)FIS':['오텀 피셔','Hitech','FIS'], 'A. Fisher (WCD)':['오텀 피셔','Hitech','FIS'],
+    'W. Shi (WCD)SHI':['시 웨이','Hitech','SHI'], 'W. Shi (WCD)':['시 웨이','Hitech','SHI'],
+    'Z. Florescu (WCD)FLO':['조이 플로레스쿠','Hitech','FLO'], 'Z. Florescu (WCD)':['조이 플로레스쿠','Hitech','FLO'],
+    'Chiara Bättig (WCD)':['키아라 베티그','Hitech','BAE'], 'Autumn Fisher (WCD)':['오텀 피셔','Hitech','FIS'],
+    'Shi Wei (WCD)':['시 웨이','Hitech','SHI'], 'Wei Shi (WCD)':['시 웨이','Hitech','SHI'], 'Zoe Florescu (WCD)':['조이 플로레스쿠','Hitech','FLO']
   }
 };
 
