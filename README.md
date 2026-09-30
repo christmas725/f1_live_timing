@@ -1,123 +1,145 @@
-# F1 Live Timing v0.1.2
+# F1 Live Timing v0.9.0
 
-완료된 Formula 1 Race 세션을 OpenF1 데이터로 불러와 시간순으로 재생하는 웹 기반 라이브 타이밍 프로토타입입니다.
+OpenF1 유료 구독 인증을 서버 측에 연결하기 위한 Live Timing 정식 전환 기반 버전입니다.
 
-## v0.1 기본 기능
+현재 UI의 Historical Replay 기능은 그대로 유지하면서, Vercel Function이 OpenF1 계정 자격 증명으로 OAuth2 access token을 발급받아 인증된 REST 요청을 처리합니다. 다음 단계에서 이 기반 위에 실제 Live Session 자동 감지와 실시간 갱신을 연결합니다.
 
-- 2023년 이후 완료된 Race 세션 목록 불러오기
-- Position / Interval / Lap 데이터 Replay
-- 타이어 Compound / Tyre Age 표시
-- Pit 횟수 표시
-- Race Control 메시지
-- Track Status (Green / Yellow / Red / SC / VSC / Chequered)
-- Weather 표시
-- 1x / 4x / 10x / 30x / 60x Replay
-- 타임라인 Seek / Restart
-- Session Best(보라) / Personal Best(초록) 랩타임 강조
-- 모바일 반응형 UI
+## v0.9.0 핵심 변경
 
-## v0.1.1 Hotfix
+- OpenF1 유료 계정 OAuth2 인증 지원
+- OpenF1 username/password는 Vercel Environment Variables에만 저장
+- 브라우저에는 OpenF1 password를 전달하지 않음
+- access token은 Vercel Function 메모리에서만 캐시
+- token 만료 전에 자동 갱신
+- upstream 401/403 발생 시 token 1회 강제 갱신 후 재시도
+- 인증 변수가 없으면 Historical용 anonymous 모드 유지
+- `car_data`, `location`, `overtakes`, `team_radio` endpoint를 향후 Live 기능용으로 허용
+- `/api/openf1?endpoint=auth_status` 진단 endpoint 추가
+- OpenF1 응답은 `no-store` 처리
+- `.env`, `.env.*` Git 제외
 
-- Vercel 비프레임워크 JavaScript Function을 ESM/Web Handler 형식으로 변경
-- `package.json`에 `"type": "module"` 추가
-- `/api/openf1`이 `Request` / `Response` Web API를 사용하도록 수정
+## 중요: 자격 증명은 GitHub에 올리지 마세요
 
-## v0.1.2 Live Lock / Offline Replay Hotfix
+OpenF1 가입 후 받은 username/password는 코드, GitHub, README, 브라우저 JavaScript에 넣지 않습니다.
 
-OpenF1은 F1 라이브 세션 시간대에 비인증 사용자의 전역 API 접근을 제한할 수 있습니다. v0.1.2부터 이 상태를 일반 서버 오류와 구분합니다.
+OpenF1 공식 안내에 따르면 토큰 발급에는 가입 메일로 받은 **username**과 **password**를 사용합니다. username이 이메일 주소와 다를 수 있으므로 OpenF1 가입 메일에 적힌 값을 사용하세요.
 
-Fallback 순서는 다음과 같습니다.
+## Vercel Environment Variables 설정
+
+Vercel의 `f1-live-timing` 프로젝트에서:
+
+`Settings → Environment Variables`
+
+다음 두 값을 추가합니다.
+
+```text
+OPENF1_USERNAME=<OpenF1 가입 메일에 적힌 username>
+OPENF1_PASSWORD=<OpenF1 가입 메일에 적힌 password>
+```
+
+권장 적용 환경:
+
+- Production
+- Preview
+- Development
+
+환경변수를 저장한 뒤 기존 배포를 **Redeploy**해야 새 Function에서 읽을 수 있습니다.
+
+## 인증 확인
+
+배포 후 아래 주소를 엽니다.
+
+```text
+/api/openf1?endpoint=auth_status
+```
+
+정상 예시:
+
+```json
+{
+  "configured": true,
+  "authenticated": true,
+  "mode": "authenticated",
+  "expires_in": 3599
+}
+```
+
+`expires_in` 값은 호출 시점에 따라 달라집니다.
+
+환경변수가 아직 없으면:
+
+```json
+{
+  "configured": false,
+  "authenticated": false,
+  "mode": "anonymous"
+}
+```
+
+## 실제 OpenF1 요청 확인
+
+인증 확인 후:
+
+```text
+/api/openf1?endpoint=sessions&session_key=latest
+```
+
+Live Session 중에도 인증이 정상이라면 OpenF1의 인증된 응답을 받을 수 있습니다.
+
+## 보안 구조
+
+```text
+Browser
+   │
+   │ /api/openf1
+   ▼
+Vercel Function
+   │
+   ├─ OPENF1_USERNAME  ┐
+   └─ OPENF1_PASSWORD  ┘ Vercel Environment Variables
+   │
+   ▼
+POST https://api.openf1.org/token
+   │
+   ▼
+1-hour access token
+   │
+   ▼
+OpenF1 authenticated REST API
+```
+
+브라우저는 OpenF1 username/password를 알지 못합니다.
+
+## 현재 동작
+
+Historical Replay 기능은 v0.1.2와 동일하게 유지합니다.
+
+Fallback:
 
 ```text
 OpenF1 Historical API
-        ↓ 실패 / Live Lock
+        ↓ 실패
 Local Historical Cache
 2025 Abu Dhabi GP Laps 1–7
         ↓ 파일 오류
 Demo Replay
 ```
 
-### Local Historical Cache
+유료 인증이 설정되면 과거 데이터도 Live Session Lock에 걸리지 않고 인증된 경로로 접근할 수 있습니다.
 
-`data/local-2025-abu-dhabi-l1-7.json`
+## 다음 단계: v0.9.1 / v1.0
 
-- 2025 Abu Dhabi Grand Prix의 실제 1~7랩 Historical Snapshot
-- 실제 Lap Time
-- 실제 Lap Position
-- 실제 Gap to Leader
-- Interval은 각 랩의 인접 차량 Gap 차이로 계산
-- Starting Grid 및 첫 Stint 길이 포함
-- 경량 fallback 데이터이므로 Tyre Compound, Pit Stop, Weather는 포함하지 않음
-- OpenF1이 잠긴 경기 주말에도 실제 기록 기반으로 Replay UI를 테스트하기 위한 용도
+인증 확인 후 다음 순서로 진행합니다.
 
-Historical snapshot 작성 시 FIA 2025 Abu Dhabi GP Timing Information과 공개된 2025 Abu Dhabi GP timing tables를 대조했습니다.
+1. 현재/최신 F1 세션 자동 감지
+2. LIVE / REPLAY 모드 자동 전환
+3. Practice / Qualifying / Sprint / Race 세션 타입별 표시
+4. Position / Interval 약 4초 갱신
+5. Lap / Sector 갱신
+6. Pit / Stint / Tyre 갱신
+7. Race Control / Weather 갱신
+8. 선택 드라이버 Telemetry
+9. Location 기반 Track Map
+10. 실제 세션 회귀 테스트 후 v1.0
 
-## 파일 구조
-
-```text
-f1-live-timing-v0.1.2/
-├─ index.html
-├─ styles.css
-├─ app.js
-├─ data/
-│  └─ local-2025-abu-dhabi-l1-7.json
-├─ api/
-│  └─ openf1.js
-├─ package.json
-├─ vercel.json
-└─ README.md
-```
-
-## Vercel 배포
-
-이 폴더의 **내용 전체를 기존 GitHub 저장소 루트에 덮어쓴 뒤 Commit/Push**하면 됩니다.
-
-별도의 Build Command는 필요하지 않습니다.
-
-정상적인 파일 배치는 아래와 같아야 합니다.
-
-```text
-/
-├─ index.html
-├─ app.js
-├─ styles.css
-├─ package.json
-├─ vercel.json
-├─ data/
-│  └─ local-2025-abu-dhabi-l1-7.json
-└─ api/
-   └─ openf1.js
-```
-
-배포 후 프록시 확인 주소:
-
-```text
-/api/openf1?endpoint=sessions&year=2026&session_name=Race
-```
-
-- 평상시: JSON 배열 → OpenF1 Historical 정상
-- 라이브 세션 중: `Live F1 session in progress...` → OpenF1 Live Lock 정상 감지 대상
-- 메인 화면에서는 Live Lock 시 Local Cache가 선택 가능한 상태로 표시됨
-
-## 로컬 확인
-
-```bash
-python -m http.server 8080
-```
-
-그 후 `http://localhost:8080`으로 접속합니다. 일반 Python HTTP 서버에서는 `/api/openf1` 서버리스 함수가 실행되지 않으므로 OpenF1 직접 호출을 시도한 뒤 필요하면 Local Cache로 fallback합니다.
-
-Vercel CLI가 있다면 프로젝트 루트에서 `vercel dev`를 사용하는 편이 실제 배포 환경과 가장 가깝습니다.
-
-## 다음 버전 계획
-
-- v0.2: Practice / Qualifying / Sprint / Race 자동 UI 전환
-- v0.3: Sector / Pit 상태 / Race Control 표현 강화
-- v0.4: Location 기반 서킷 차량 위치 맵
-- v0.5: 선택 드라이버 Telemetry (Speed/RPM/Gear/Throttle/Brake/DRS)
-- v0.9: OpenF1 Real-time 인증 + WebSocket/MQTT 계층
-- v1.0: 실제 세션 자동 감지 및 완전 자동 Live Timing
-
-## OpenF1 요금 관련
-
-OpenF1의 Historical 데이터는 개인 용도 기준 무료이며, 실시간 데이터가 필요한 Sponsor 플랜은 별도 월 구독입니다. 인증 정보는 향후 v0.9에서 Vercel 환경변수에만 저장하도록 구성할 예정입니다.
+OpenF1 공식 문서상 access token은 약 1시간 유효하며, 실시간 데이터는 MQTT/WebSocket 사용을 권장합니다. 현재 v0.9.0은 우선 안전한 서버 측 인증 기반을 완성하는 단계입니다.
