@@ -148,3 +148,17 @@ OpenF1 공식 문서상 access token은 약 1시간 유효하며, 실시간 데�
 ## Preview redeploy note
 
 Environment variable changes require a fresh Preview deployment before the authenticated Function can read the new values.
+
+
+## v0.9.1 Live Session Detection
+
+- 서버 측 OpenF1 인증 상태를 메인 화면에서 확인
+- 현재 연도의 세션 전체를 인증 경로로 조회
+- 현재 시간이 세션 시간대이면 `LIVE` 자동 표시
+- 라이브 세션이 없으면 `STANDBY`
+- 최근 세션 및 다음 세션 자동 계산
+- 다음 세션까지 초 단위 카운트다운
+- KST 기준 시작 시각 표시
+- 현재 2026 일정의 `Bahrain + Kuala Lumpur` 조합은 기존 프로젝트 표기 규칙에 맞춰 `바레인 GP in 말레이시아`로 표시
+
+v0.9.1은 **Live 세션 감지 계층**까지입니다. Timing Tower 자체의 실시간 incremental update는 다음 단계(v0.9.2)에서 연결합니다.
