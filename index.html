@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#090a0d" />
-  <title>F1 Live Timing v0.1.2</title>
+  <title>F1 Live Timing v0.9.1</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -48,6 +48,26 @@
         </select>
       </label>
       <button id="loadButton" class="primary-button" type="button">데이터 불러오기</button>
+    </section>
+
+    <section class="live-monitor" aria-label="OpenF1 live session monitor">
+      <div class="live-monitor-card primary">
+        <span class="live-monitor-label">AUTO SESSION DETECTION</span>
+        <strong id="detectedSession" class="live-monitor-value">OpenF1 세션 확인 중…</strong>
+        <span id="liveSessionDetail" class="live-monitor-detail">인증된 세션 목록을 조회하고 있습니다.</span>
+      </div>
+      <div class="live-monitor-card">
+        <span class="live-monitor-label">OPENF1</span>
+        <strong id="openf1AuthState" class="live-monitor-value live-badge" data-tone="standby">CHECKING</strong>
+      </div>
+      <div class="live-monitor-card">
+        <span class="live-monitor-label">MODE</span>
+        <strong id="liveModeState" class="live-monitor-value live-badge" data-tone="standby">DETECTING</strong>
+      </div>
+      <div class="live-monitor-card">
+        <span class="live-monitor-label">NEXT SESSION</span>
+        <strong id="nextSessionTime" class="live-monitor-value">—</strong>
+      </div>
     </section>
 
     <section class="race-strip">
@@ -144,13 +164,13 @@
         </section>
 
         <section class="panel-card info-card">
-          <span class="eyebrow">v0.1.2</span>
-          <p>OpenF1 Historical Replay를 우선 사용하고, Live Lock 시 2025 Abu Dhabi GP Local Cache(1–7랩), 마지막으로 Demo Replay 순서로 fallback합니다.</p>
+          <span class="eyebrow">v0.9.1 · LIVE DETECTION</span>
+          <p>OpenF1 유료 인증 상태와 현재/다음 세션을 자동 감지합니다. 현재는 Live 세션 감지 기반까지 연결되어 있으며 다음 단계에서 타이밍 타워를 실시간 갱신합니다.</p>
         </section>
       </aside>
     </main>
   </div>
 
-  <script src="./app.js" defer></script>
+  <script src="./app.js" defer></script>\n  <script src="./live-status.js" defer></script>
 </body>
 </html>

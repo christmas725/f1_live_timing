@@ -1,9 +1,9 @@
 {
-  "name": "f1-live-timing-v0.1.2",
-  "version": "0.1.2",
+  "name": "f1-live-timing-v0.9.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
-  "description": "Historical Formula 1 timing replay UI powered by OpenF1",
+  "description": "Formula 1 timing UI with authenticated OpenF1 backend foundation",
   "scripts": {
     "serve": "python -m http.server 8080",
     "build:netlify": "rm -rf dist && mkdir -p dist && cp -R magic-number/. dist/ && sed -i 's|href=\"/\"|href=\"https://f1-live-timing-seven.vercel.app/\"|' dist/index.html"
