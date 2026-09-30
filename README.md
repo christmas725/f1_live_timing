@@ -143,3 +143,8 @@ Demo Replay
 10. 실제 세션 회귀 테스트 후 v1.0
 
 OpenF1 공식 문서상 access token은 약 1시간 유효하며, 실시간 데이터는 MQTT/WebSocket 사용을 권장합니다. 현재 v0.9.0은 우선 안전한 서버 측 인증 기반을 완성하는 단계입니다.
+
+
+## Preview redeploy note
+
+Environment variable changes require a fresh Preview deployment before the authenticated Function can read the new values.
