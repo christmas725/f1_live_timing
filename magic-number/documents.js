@@ -1,18 +1,22 @@
+import {category,displayTitle,categories} from './fia-categories.js';
 const list = document.querySelector('#documentList');
 const status = document.querySelector('#documentStatus');
 const filter = document.querySelector('#eventFilter');
 const search = document.querySelector('#documentSearch');
 const refresh = document.querySelector('#documentRefresh');
 let documents = [], fetchedAt = '';
+const typeFilter=document.querySelector('#typeFilter');
+for(const value of categories)typeFilter.add(new Option(value,value));
+typeFilter.addEventListener('change',render);
 function render() {
   const query = search.value.trim().toLowerCase();
-  const rows = documents.filter(d => (!filter.value || d.event === filter.value) && `${d.title} ${d.event}`.toLowerCase().includes(query));
+  const rows = documents.filter(d => (!filter.value || d.event === filter.value) && (!typeFilter.value || category(d.title)===typeFilter.value) && `${d.title} ${displayTitle(d.title)} ${d.event}`.toLowerCase().includes(query));
   list.replaceChildren();
   for (const doc of rows) {
     const li = document.createElement('li'); li.className = 'card document-item';
-    const a = document.createElement('a'); a.textContent = doc.title; a.href = `./document.html?file=${encodeURIComponent(new URL(doc.url).pathname)}&title=${encodeURIComponent(doc.title)}`;
+    const a = document.createElement('a'); a.textContent = displayTitle(doc.title); a.href = `./document.html?file=${encodeURIComponent(new URL(doc.url).pathname)}&title=${encodeURIComponent(doc.title)}`;
     const meta = document.createElement('p'); meta.className = 'document-meta'; meta.textContent = `${doc.event} · ${doc.published || '게시 시각 미표기'} · PDF`;
-    li.append(a, meta); list.append(li);
+    const badge=document.createElement('span');badge.className='doc-category';badge.textContent=category(doc.title);const original=document.createElement('p');original.className='document-meta';original.textContent=doc.title;li.append(badge,a,original,meta); list.append(li);
   }
   status.textContent = `${rows.length}개 문서${rows.length ? '' : ' · 검색 조건에 맞는 문서가 없습니다.'} · 조회 ${new Date(fetchedAt).toLocaleString('ko-KR')}`;
 }
