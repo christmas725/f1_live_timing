@@ -1,6 +1,5 @@
 import OpenAI from 'openai';
 import { getStore } from '@netlify/blobs';
-import { PDFParse } from 'pdf-parse';
 import pdfHandler from './fia-pdf.mts';
 import listHandler from './fia-documents.mts';
 import { hash, validFile, VERSION, schema, instructions, validateResult } from '../../server/fia-translation.mjs';
@@ -37,6 +36,7 @@ export default async (request:Request, context:any) => {
    if(!pdf.ok) throw new Error('source_unavailable');
    const bytes=new Uint8Array(await pdf.arrayBuffer()); const contentHash=hash(bytes);
    if(cached?.contentHash===contentHash && cached.version===VERSION){cached.checkedAt=Date.now();await store.setJSON('documents/'+key,cached);emit({state:'ready',...cached});return;}
+   const { PDFParse } = await import("pdf-parse");
    const parser=new PDFParse({data:bytes}); let extracted;
    try{extracted=await parser.getText();}finally{await parser.destroy();}
    const source=extracted.text;
