@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { extractPdfText } from '../../server/fia-pdf-text.mjs';
 import { getStore } from '@netlify/blobs';
 import pdfHandler from './fia-pdf.mts';
 import listHandler from './fia-documents.mts';
@@ -36,9 +37,14 @@ export default async (request:Request, context:any) => {
    if(!pdf.ok) throw new Error('source_unavailable');
    const bytes=new Uint8Array(await pdf.arrayBuffer()); const contentHash=hash(bytes);
    if(cached?.contentHash===contentHash && cached.version===VERSION){cached.checkedAt=Date.now();await store.setJSON('documents/'+key,cached);emit({state:'ready',...cached});return;}
-   const { PDFParse } = await import("pdf-parse");
-   const parser=new PDFParse({data:bytes}); let extracted;
-   try{extracted=await parser.getText();}finally{await parser.destroy();}
+   emit({state:'processing',message:'PDF 본문을 추출하고 있습니다…'});
+   const { default: PDFParser } = await import('pdf2json');
+   const extracted:any = await new Promise((resolve,reject)=>{
+    const parser=new PDFParser(null,1);const timer=setTimeout(()=>{parser.destroy();reject(new Error('parse_timeout'));},8000);
+    parser.on('pdfParser_dataError',()=>{clearTimeout(timer);parser.destroy();reject(new Error('parse_failed'));});
+    parser.on('pdfParser_dataReady',(data:any)=>{clearTimeout(timer);const text=extractPdfText(data);parser.destroy();resolve({text,total:data.Pages.length});});
+    parser.parseBuffer(Buffer.from(bytes));
+   });
    const source=extracted.text;
    if(source.trim().length<80){emit({state:'error',message:'텍스트를 추출하기 어려운 PDF입니다. 스캔·이미지 문서는 원문을 확인해 주세요.'});return;}
    if(source.length>35000 || extracted.total>15){emit({state:'error',message:'현재 자동 해설 범위(15페이지·35,000자)를 넘는 문서입니다. 원문 또는 구글 문서 번역을 이용해 주세요.'});return;}
