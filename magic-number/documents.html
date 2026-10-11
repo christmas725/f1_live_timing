@@ -1,0 +1,12 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FIA 공식 문서 | 포뮬러 챔피언십</title><meta name="description" content="FIA가 발행한 F1 대회 공식 문서와 판정, 출발 그리드, 세션 결과를 확인합니다."><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./navigation.css"></head><body>
+  <div class="site-navigation"><button id="menuToggle" class="menu-toggle" type="button" aria-label="메뉴 열기" aria-haspopup="dialog" aria-controls="siteMenu" aria-expanded="false"><span></span><span></span><span></span></button><span>포뮬러 챔피언십</span></div>
+  <dialog id="siteMenu" class="site-menu" aria-labelledby="menuTitle">
+    <div class="menu-heading"><strong id="menuTitle">메뉴</strong><button id="menuClose" type="button" aria-label="메뉴 닫기">×</button></div>
+    <nav aria-label="주 메뉴"><a href="./index.html" data-page="home">메인페이지</a><a href="./documents.html" data-page="documents">FIA 공식 문서</a></nav>
+    <p>포뮬러 챔피언십 · 비공식 팬 사이트</p>
+  </dialog>
+<main class="shell"><header class="topbar"><div><p class="eyebrow">F1 · OFFICIAL DOCUMENTS</p><h1>FIA <span>공식 문서</span></h1><p class="subtitle">판정문, 출발 그리드, 세션 결과 등 FIA가 공개한 F1 대회 문서를 확인하세요.</p></div><a class="ghost-link" href="https://www.fia.com/documents/championships/fia-formula-one-world-championship/110191" target="_blank" rel="noopener noreferrer">FIA 원본 목록 ↗</a></header>
+<section class="card document-controls" aria-label="문서 찾기"><label>대회<select id="eventFilter"><option value="">전체 대회</option></select></label><label>문서 분류<select id="typeFilter"><option value="">전체 분류</option></select></label><label>문서 검색<input id="documentSearch" type="search" placeholder="예: Grid, Classification, Car 16"></label><button id="documentRefresh" class="refresh-btn" type="button">새로고침</button></section>
+<p id="documentStatus" class="documents-status" role="status" aria-live="polite">FIA 공식 문서를 불러오는 중…</p><ul id="documentList" class="document-list" aria-label="FIA 문서 목록"></ul>
+<footer><p>FIA 공식 공개 목록에 있는 문서를 표시합니다. 원문 제목과 게시 시각을 함께 표시하며, 문서를 선택하면 사이트 안에서 PDF를 볼 수 있습니다.</p><p>목록은 최대 5분간 캐시됩니다. 이 사이트는 FIA와 제휴 관계가 없는 팬 사이트입니다.</p></footer></main>
+<script src="./navigation.js" defer></script><script type="module" src="./documents.js"></script></body></html>

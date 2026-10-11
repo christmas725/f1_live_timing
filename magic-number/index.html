@@ -9,8 +9,15 @@
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./beginner.css" />
   <link rel="stylesheet" href="./series.css" />
+  <link rel="stylesheet" href="./navigation.css" />
 </head>
 <body>
+  <div class="site-navigation"><button id="menuToggle" class="menu-toggle" type="button" aria-label="메뉴 열기" aria-haspopup="dialog" aria-controls="siteMenu" aria-expanded="false"><span></span><span></span><span></span></button><span>포뮬러 챔피언십</span></div>
+  <dialog id="siteMenu" class="site-menu" aria-labelledby="menuTitle">
+    <div class="menu-heading"><strong id="menuTitle">메뉴</strong><button id="menuClose" type="button" aria-label="메뉴 닫기">×</button></div>
+    <nav aria-label="주 메뉴"><a href="./index.html" data-page="home">메인페이지</a><a href="./documents.html" data-page="documents">FIA 공식 문서</a></nav>
+    <p>포뮬러 챔피언십 · 비공식 팬 사이트</p>
+  </dialog>
   <main class="shell">
     <header class="topbar">
       <div>
@@ -208,5 +215,6 @@
   </main>
   <script type="module" src="./router.js"></script>
   <script src="./localize.js" defer></script>
+  <script src="./navigation.js" defer></script>
 </body>
 </html>
