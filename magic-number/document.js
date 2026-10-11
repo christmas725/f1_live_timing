@@ -49,7 +49,8 @@ generate.addEventListener('click',async()=>{
  generate.disabled=true;
  try{const r=await fetch('/api/fia-translate?file='+encodeURIComponent(file),{method:'POST',signal:AbortSignal.timeout(60000)});
  if(!r.headers.get('content-type')?.includes('ndjson')){if(r.headers.get('content-type')?.includes('json'))draw(await r.json());else translationStatus.textContent='잠시 후 다시 시도해 주세요. 새 해설 생성은 사이트 전체에서 시간당 6회까지 가능합니다.';return;}
- const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='';for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let idx;while((idx=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,idx);buffer=buffer.slice(idx+1);if(line)draw(JSON.parse(line));}}
+ const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='',finished=false;for(;;){const {done,value}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});let idx;while((idx=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,idx);buffer=buffer.slice(idx+1);if(line){const update=JSON.parse(line);if(update.state!=='processing')finished=true;draw(update);}}}
+ if(!finished)throw new Error('incomplete_stream');
  }catch{translationStatus.textContent='해설 생성 연결이 끊겼습니다. 잠시 후 페이지를 다시 열어 저장 여부를 확인해 주세요.';}finally{generate.disabled=false;}
 });
 if(/^\/system\/files\/decision-document\/[a-zA-Z0-9_.-]+\.pdf$/.test(file) && !file.includes('..'))readTranslation();else translationStatus.textContent='문서 목록에서 문서를 다시 선택해 주세요.';
