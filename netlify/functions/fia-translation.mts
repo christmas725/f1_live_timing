@@ -3,7 +3,7 @@ import { extractPdfText } from '../../server/fia-pdf-text.mjs';
 import { getStore } from '@netlify/blobs';
 import pdfHandler from './fia-pdf.mts';
 import listHandler from './fia-documents.mts';
-import { hash, validFile, VERSION, schema, instructions, validateResult } from '../../server/fia-translation.mjs';
+import { hash, validFile, VERSION, schema, instructions, validateResult, normalizeResult } from '../../server/fia-translation.mjs';
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const json = (value:unknown, status=200) => Response.json(value,{status,headers});
 const env = (key:string) => Netlify.env.get(key);
@@ -14,7 +14,7 @@ export default async (request:Request, context:any) => {
  if (!validFile(file)) return json({state:'error',message:'올바른 문서 주소가 아닙니다.'},400);
  if (request.method === 'POST' && request.headers.get('origin') !== new URL(request.url).origin) return json({state:'error',message:'사이트에서 다시 요청해 주세요.'},403);
  let store:any, cached:any; const key = hash(file);
- try { store=storeFor(context); cached=await store.get('documents/'+key,{type:'json'});if(cached?.version!==VERSION)cached=null; }
+ try { store=storeFor(context); cached=await store.get('documents/'+key,{type:'json'});if(cached?.version!==VERSION)cached=null;else if(cached)cached.result=normalizeResult(cached.result,cached.sourceTitle); }
  catch { return json({state:'unavailable',message:'번역 저장소에 연결하지 못했습니다. 원문 PDF를 이용해 주세요.'},503); }
  const configured = Boolean(env('OPENAI_API_KEY'));
  if (request.method === 'GET') return json(cached ? {state:'ready',...cached,canGenerate:configured,needsRefresh:Date.now()-cached.checkedAt>900000} : {state:configured?'not_started':'setup_required',canGenerate:configured,message:configured?'아직 한국어 해설이 없습니다. 생성하면 다음 조회부터 저장된 결과를 보여드립니다.':'자동 번역 서비스 연결을 준비하고 있습니다. 지금은 원문 PDF와 구글 문서 번역을 이용해 주세요.'});
@@ -53,7 +53,7 @@ export default async (request:Request, context:any) => {
    const model=env('FIA_TRANSLATION_MODEL')||'gpt-4.1-mini';
    const response=await client.responses.create({model,store:false,instructions,input:'아래 문서를 한국어로 번역하고 항목별로 정리해 주세요. sections.body와 metadata.label도 반드시 한국어로 작성하세요. sourceQuote만 영어 원문 그대로 쓰세요.\nDocument title: '+doc.title+'\nPDF source:\n'+source,max_output_tokens:10000,text:{format:{type:'json_schema',name:'fia_korean_document',strict:true,schema}}});
    if(response.status!=='completed') throw new Error('incomplete_translation');
-   const result=validateResult(JSON.parse(response.output_text),source);
+   const result=normalizeResult(validateResult(JSON.parse(response.output_text),source),doc.title);
    const saved={result,contentHash,version:VERSION,sourceUrl:doc.url,sourceTitle:doc.title,createdAt:new Date().toISOString(),checkedAt:Date.now(),model};
    await store.setJSON('documents/'+key,saved);
    emit({state:'ready',...saved});

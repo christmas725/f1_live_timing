@@ -1,3 +1,4 @@
+import {category} from '../magic-number/fia-categories.js';
 import { createHash } from 'node:crypto';
 export const VERSION = 'ko-v2';
 export const hash = value => createHash('sha256').update(value).digest('hex');
@@ -22,4 +23,9 @@ export function validateResult(result, source) {
  }
  for (const table of result.tables) if (!table.columns.length || table.rows.some(row => row.length !== table.columns.length)) throw new Error('invalid_table');
  return result;
+}
+
+export function normalizeResult(result,title){
+ const korean = value => value.replace(/패르크 페르메|파르크 페르메|파르 페르메/g,'파르페르메').replace(/Aramco/g,'아람코');
+ return {...result,category:category(title),titleKo:korean(result.titleKo),summary:korean(result.summary),metadata:result.metadata.map(m=>({...m,value:korean(m.value)})),sections:result.sections.map(s=>({...s,body:korean(s.body)}))};
 }
