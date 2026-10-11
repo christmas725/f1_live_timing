@@ -10,7 +10,7 @@ function render() {
   list.replaceChildren();
   for (const doc of rows) {
     const li = document.createElement('li'); li.className = 'card document-item';
-    const a = document.createElement('a'); a.textContent = `${doc.title} ↗`; a.href = doc.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    const a = document.createElement('a'); a.textContent = doc.title; a.href = `./document.html?file=${encodeURIComponent(new URL(doc.url).pathname)}&title=${encodeURIComponent(doc.title)}`;
     const meta = document.createElement('p'); meta.className = 'document-meta'; meta.textContent = `${doc.event} · ${doc.published || '게시 시각 미표기'} · PDF`;
     li.append(a, meta); list.append(li);
   }
