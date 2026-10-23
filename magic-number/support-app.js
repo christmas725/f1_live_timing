@@ -52,9 +52,7 @@ function setStatus(message, kind='') { els.dataStatus.textContent = message; els
 
 function configurePage() {
   document.title = `${meta.title} 챔피언십 매직넘버 계산기`;
-  document.querySelector('.eyebrow').textContent = `비공식 ${meta.full} 챔피언십 계산 도구 · V0.4`;
   document.querySelector('h1').innerHTML = `${meta.title} 챔피언십 <span>매직넘버</span>`;
-  document.querySelector('.subtitle').textContent = `${meta.full} 드라이버·팀 챔피언십의 우승 확정까지 남은 점수와 다음 라운드 조건을 한글로 쉽게 확인합니다.`;
   const glossary = document.querySelector('.glossary-row');
   if (glossary) glossary.innerHTML = meta.guide.map(([key, text]) => `<span><b>${escapeHtml(key)}</b> ${escapeHtml(text)}</span>`).join('');
   const starterTitle = document.querySelector('#starterTitle');
@@ -183,3 +181,4 @@ els.modeButtons.forEach((button)=>button.addEventListener('click',()=>{if(button
 els.entitySelect.addEventListener('change',()=>{state.selectedId=els.entitySelect.value;renderCore();});
 els.refreshBtn.addEventListener('click',loadData); els.seasonSelect.addEventListener('change',loadData);
 loadData();
+
